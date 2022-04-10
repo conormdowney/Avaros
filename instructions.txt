@@ -1,0 +1,27 @@
+Instructions:
+
+1.) Go to the Tonal/sqlScripts folder.
+2.) In PostgreSql run the scripts in the following order
+a.) dbInit.sql
+b.) dateTriggers.sql
+c.) dataInit.sql
+
+3.) Open Tonal/db_config.txt. This has the postgres connection string that is required to connect to Postgres.
+	I didnt use environment variables as i didnt know if there was any security in place on whoevers machine 
+	will be running this to stop it or if they didnt want any set on their machine. Ideally these would be environment variables
+	
+4.) Run core.go - a print out in the terminal will say "server running"
+
+5.) Using postman or some other tool set up your Get Request. In it you will need a cookie with the vlaue of userId=1.
+	In lieu of actual tokens and authentication I use the user id to determine if a request can be handled. If you use 
+	userId=1 it will work. Any other userId will return an error.
+	
+6.) The path for the request is /musclegroupexercises/{type}/{name}, where
+a.) type is either exercises or musclegroups depending on what you are searching for. 
+	E.g. If you are looking for the muscle groups for an exercise the path is /musclegroupexercises/musclegroups/{exerciseName}
+b.) name is then the name of the search term. 
+	E.g. If you want all the exercises for Forearms the path would be /musclegroupexercises/exercises/Forearms
+	
+7.) Results, whether valid or error, should be returned in json format. 
+a.) Valid returns come in the form '{"name": "{name}", "resultList": [array of items]"}' E.g. {"name":"Forearms","resultList":["Biceps Curl","Triceps Extension","Shoulder Shrug","Pull Up","Deadlift"]}
+b. Errors are returned in the form {"error": "You are not authorized to use this service"}
