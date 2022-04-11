@@ -115,7 +115,12 @@ func CreateFutureReservation(timeInFuture float64, roomId int32, expiryTime int,
 		select {
 		// Create the reservation in the future
 		case <-time.After(time.Minute * time.Duration(timeInFuture)):
-			_, err := Reserve(roomId, expiryTime, db)
+			exists, err := CheckReservation(roomId, db)
+			if exists {
+				fmt.Println("Reservation already exists")
+				return
+			}
+			_, err = Reserve(roomId, expiryTime, db)
 			if err != nil {
 				panic("Error creating reservation: " + err.Error())
 			}
