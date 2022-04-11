@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,6 +54,15 @@ func (rs *RoomService) Init() error {
 func (rs *RoomService) reserveRoom(rw web.ResponseWriter, req *web.Request) {
 	// Get the id from the url parameters
 	roomId := getIdAsInt(req.PathParams["id"])
+
+	roomExists, err := dataAccess.CheckRoomExists(roomId, rs.RestObj.Db)
+	if err != nil {
+		panic("Error determining if room exists: " + err.Error())
+	}
+
+	if !roomExists {
+		panic(fmt.Sprintf("Room with id %d does not exist", roomId))
+	}
 	// read the request body to get the values passed in, if any
 	b, err := ioutil.ReadAll(req.Body)
 	defer req.Body.Close()
@@ -89,10 +99,11 @@ func (rs *RoomService) reserveRoom(rw web.ResponseWriter, req *web.Request) {
 			resRsp.Ids = []int32{reservationId}
 		} else {
 			// get the time difference for when to create the future reservation
-			startTimeDelay := time.Now().Sub(resReq.StartTime)
+			startTimeDelay := math.Abs(time.Now().Sub(resReq.StartTime).Minutes())
+			//fmt.Println(startTimeDelay)
 			// fire off a thread that will handle creating that reservation
 			// at the correct time
-			go dataAccess.CreateFutureReservation(startTimeDelay.Seconds(), roomId, resReq.ReservationLength, rs.RestObj.Db)
+			go dataAccess.CreateFutureReservation(startTimeDelay, roomId, resReq.ReservationLength, rs.RestObj.Db)
 			resRsp.Result = true
 		}
 	}

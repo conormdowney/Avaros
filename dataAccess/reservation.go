@@ -6,6 +6,7 @@ package dataAccess
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -90,7 +91,7 @@ func expireReservation(numMins int, reservationId int32, db *pgxpool.Pool) {
 		select {
 		// thread will run and after the number of minutes provided, will
 		// expire the reservation
-		case <-time.After(time.Second * time.Duration(numMins)):
+		case <-time.After(time.Minute * time.Duration(numMins)):
 			endTime := time.Now()
 			_, err := db.Exec(context.Background(), `
 				UPDATE reservation
@@ -109,10 +110,11 @@ func expireReservation(numMins int, reservationId int32, db *pgxpool.Pool) {
 // number of minutes. Should only be opened in a thread. Calls Reserve, which handles
 // the rest of the reserve workflow
 func CreateFutureReservation(timeInFuture float64, roomId int32, expiryTime int, db *pgxpool.Pool) {
+	fmt.Println(time.Duration(timeInFuture))
 	for {
 		select {
 		// Create the reservation in the future
-		case <-time.After(time.Second * time.Duration(timeInFuture)):
+		case <-time.After(time.Minute * time.Duration(timeInFuture)):
 			_, err := Reserve(roomId, expiryTime, db)
 			if err != nil {
 				panic("Error creating reservation: " + err.Error())
@@ -120,4 +122,25 @@ func CreateFutureReservation(timeInFuture float64, roomId int32, expiryTime int,
 			return
 		}
 	}
+}
+
+// CheckRoomExists checks if a room id supplied is in the database to reserve
+func CheckRoomExists(id int32, db *pgxpool.Pool) (bool, error) {
+	//query for reservations on the room
+	rows, err := db.Query(context.Background(), `
+		SELECT 
+			id 
+		FROM
+			room
+		Where
+			id = $1
+	`, id)
+	if err != nil {
+		return false, err
+	}
+
+	next := rows.Next()
+	rows.Close()
+
+	return next, nil
 }

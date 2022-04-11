@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
+	database "avaros/database"
 	rest "avaros/rest"
 	router "avaros/router"
 
@@ -17,6 +19,8 @@ func main() {
 	router := router.NewRouter()
 	db := newDatabase()
 	defer db.Close()
+	// create and seed the database
+	database.Seed(db)
 
 	// instantiate a rest object so all rest services have the same database and router
 	RestObj := rest.RestServiceObject{
@@ -37,25 +41,42 @@ func main() {
 		}
 	}
 
-	http.ListenAndServe("localhost:3000", router)
+	listen := os.Getenv("LISTEN_ADDR")
+	fmt.Println("LISTEN: " + listen)
+	if listen == "" {
+		listen = "localhost:3000"
+	}
+
+	http.ListenAndServe(listen, router)
 }
 
 // newDatabase connects to a database at the start and passes that connection to
 // any service below it.
-// Ideally this would be a wrapper that uses an interface. This way you coud have different implementations
-// for different database types if needed. In the interest of time ive skipeed this for now
-// use a Pool as it is thread safe whereas the standard connection is not
 func newDatabase() *pgxpool.Pool {
-	// database connection string is in db_config.txt
-	// Would have used environemnt variables but i dont know if there are issues with adding them
-	// or if whoever runs this would just prefer not to have them on their machine,
-	// so I just used a text file instead
-	// dbConfig, err := os.ReadFile("db_config.txt")
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-	//conn, err := pgx.NewConnPool(context.Background(), string(dbConfig))
-	conn, err := pgxpool.Connect(context.Background(), "user=postgres dbname=postgres password=password host=localhost sslmode=disable")
+
+	user := os.Getenv("DB_USER")
+	if user == "" {
+		user = "postgres"
+	}
+
+	name := os.Getenv("DB_NAME")
+	if name == "" {
+		name = "postgres"
+	}
+
+	password := os.Getenv("DB_PASSWORD")
+	if password == "" {
+		password = "password"
+	}
+
+	host := os.Getenv("DB_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
+	conn, err := pgxpool.Connect(context.Background(),
+		fmt.Sprintf("user=%s dbname=%s password=%s host=%s sslmode=disable",
+			user, name, password, host))
 	if err != nil {
 		panic("Unable to connect to database: " + err.Error())
 	}
